@@ -1897,8 +1897,21 @@ plots.doAutoMargin = function(gd) {
     gs.w = Math.round(width) - gs.l - gs.r;
     gs.h = Math.round(height) - gs.t - gs.b;
 
-    // if things changed and we're not already redrawing, trigger a redraw
-    if(!fullLayout._replotting && plots.didMarginChange(oldMargins, gs)) {
+    // Keep the history of old margins to avoid repeating the same calculation.
+    // The margin calculation result can be like A, B, A, B... so we need
+    // to compare the current value with the history otherwise it spins and
+    // eventually causes Maximum call stack size exceeded error.
+    if(!('_oldMarginsHistory' in fullLayout)) {
+        fullLayout._oldMarginsHistory = [];
+    }
+
+    // if things changed and we're not already redrawing, trigger a redraw.
+    // make sure there is no same margin configuration in the past.
+    if(!fullLayout._replotting && plots.didMarginChange(oldMargins, gs) &&
+        fullLayout._oldMarginsHistory.filter(function(margins) {
+            return !plots.didMarginChange(margins, gs);
+        }).length === 0) {
+        fullLayout._oldMarginsHistory.push(oldMargins);
         if('_redrawFromAutoMarginCount' in fullLayout) {
             fullLayout._redrawFromAutoMarginCount++;
         } else {
